@@ -1,0 +1,81 @@
+= Multi-Thread Safe Singleton Object Pool Uygulaması (JAVA)
+Mert KELLECİ 170201074 <170201074@kocaeli.edu.tr>
+:source-highlighter: highlight.js
+:source-language: java
+:last-update-label!:
+:toc:
+
+== Uygulamanın Amacı
+Bu uygulanmanın amacı, oluşturulan bir _object pool'daki_ gerekli sınıfları kullanması gereken _thread'lerin_ senkronizasyonunun ve bu _object pool'un_ birden çok sayıdaki _thread'ler_ tarafından kullanılırken doğru bir şekilde çalışmasının sağlanmasıdır.
+
+Bunun için bir *_Rent A Car_* firması örneği kullanılmıştır. 10 adet kiralanabilir aracı bulunan bu firmaya, 15 adet müşteri, araç kiralama isteğiyle başvurmaktadır. Araç kiralamayı başaran müşteriler rastgele belirlenen bir süre boyunca aracı kullanmakta ve bu sürenin sonunda ise aracı geri teslim etmektedirler. Kiralanacak araç bulamayan müşteriler ise yine rastgele bir süre bekledikten sonra kullanılabilir bir aracın olup olmadığını kontrol etmektedirler. Bu şekilde tüm müşterilerin ihtiyaçları karşılandıktan sonra uygulama sonlanmaktadır. 
+
+== Uygulamanın Çalışması
+
+
+=== *Sınıflar*
+* *Car.java:* +
+Arabanın ismiyle birlikte uygunluk durumunu tutar. İki fonksiyonuyla birlikte arabanın kiralanmasıyla ilgilenir:
+
+[source,java]
+----
+public synchronized String RentCar(String customerName) {
+        if (!available) {
+            try {
+                wait(100);
+            } catch (InterruptedException e) {
+
+            }
+            return null;
+        }
+
+        available = false;
+        notifyAll();
+        return carName;
+    }
+
+public synchronized void ReturnCar() {
+        available = true;
+        System.out.println(carName + " aracı alınmaya hazır.\n");
+        notifyAll();
+    }
+----
+Burada _synchronized_ kullanılmasının sebebi, sınıf üzerinde aynı anda işlem yapabilecek olan birden fazla işlem yapabilecek _thread'in_ bulunmasıdır. Bu _synchronized block_ ile karşılaşan _thread'lerden_ sadece bir tanesi bu fonksiyonu devam ettirebilir.
+
+* *RentACarSingleton.java:* +
+_Object Pool'un_ tutulduğu _singleton_ sınıftır. *_Car_* sınıfından 10 adet örnekler ve bunları bir listeye aktarıp paylaşır. +
+[.underline]#*_Singleton_ olmasının sebebi, tüm _thread'lerin_, aynı ortak havuzdaki objeleri kullandıklarından emin olmak istememizdir. _Singleton Design Pattern_ kullanarak bu havuzdan sadece ve sadece bir tane örnekleneceğini ve çağırıldığı yerlere bu örneğin gönderileceğini garantilemiş oluruz.*# Bunun için yapılması gerekenler ise:
+** Sınıfın _private static_ bir üyesini oluşturmak. Eğer burada doğrudan örneğini oluşturursak bu _Early Instantiation'dır_. Ancak bu örneği ihtiyacımız olduğunda oluşturursak ise bu bir _Lazy Instantiation'dır_. Aşağıda verilen kod parçası bir _Lazy Instantiation_ örneğidir.
+** Sınıfın _constructor'ını private_ olarak belirlemek.
+** Sınıfın bir örneğinin ya da daha önce oluşturulmadıysa yeni oluşturulan örneğinin gönderildiği _public static_ bir fonksiyon.
+
+[source,java]
+----
+private static RentACarSingleton RACInstance = null;
+
+private RentACarSingleton() { ... };
+
+public static RentACarSingleton getInstance() {
+        if (RACInstance == null) {
+            synchronized (RentACarSingleton.class) {
+                if (RACInstance == null) {
+                    RACInstance = new RentACarSingleton();
+                }
+            }
+        }
+        return RACInstance;
+    }
+----
+
+* *Customer.java:*
+Müşterilerin isimlerini, _thread'lerin_ renklerini ve *_RentACar_* sınıfından aldığı _instance'ı_ tutan bu sınıf, rastgele belirlenen aralıklarla araçlardan bir tanesini kiralamaya çalışır. Eğer bu işlemde başarılı olursa, yine rastgele belirlenen bir süre sonrasında, aracı _object pool'a_ geri bırakır ve ihtiyacı karşılanmış olur. Eğer araç almayı başaramazsa rastgele bir süre sonrasında tekrar araç almayı dener.
+
+
+* *App.java:* +
+*_Customer_* sınıfından 15 adet örnekler. Bu örnekleri birer _thread_ olarak çalıştırır.
+
+
+=== Sınıf Diyagramı
+image::out/UMLDiagram/Rent A Car.png[Sınıf Diyagramı]
+
+

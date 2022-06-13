@@ -1,0 +1,57 @@
+@startuml Rent A Car
+interface Runnable
+class RentACarSingleton <<(S,#FF7700) Singleton>>
+Customer -- ThreadColor
+RentACarSingleton o-- "10" Car
+Runnable <|-- Customer
+RentACarSingleton <-- Customer : < Kullanır
+App o-- "15" Customer
+
+class ThreadColor{
+    + {static} String ANSI_RESET
+    + {static} String ANSI_BLACK
+    + {static} String ANSI_RED
+    + {static} String ANSI_GREEN
+    + {static} String ANSI_YELLOW
+    + {static} String ANSI_BLUE
+    + {static} String ANSI_PURPLE
+    + {static} String ANSI_CYAN
+}
+
+class Car{
+    - String carName
+    - boolean available
+
+    + sychronized String RentCar(String customerName): carName
+    + synchronized void ReturnCar()
+}
+
+class RentACarSingleton{
+    - {static} RentACarSingleton RACInstance
+    - {static} ArrayList<Car> carList
+    
+    - RentACarSingleton()
+    + {static} RentACarSingleton getInstance(): RACInstance
+    + {static} ArrayList<Car> getCarList(): carList
+}
+
+class Customer{
+    - String customerName
+    - String ThreadColor
+    - ArrayList<Car> instance
+    - boolean need
+    - Reentrantlock lock
+
+    + Customer(String customerName, String threadcolor, ArrayList<Car> instance)
+    + void run()
+}
+
+class App{
+    + ArrayList<Car> instance
+
+    + Customer c1...c15
+    + new Thread(c1...c15).start()
+}
+
+
+@enduml
